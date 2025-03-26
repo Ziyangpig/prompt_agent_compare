@@ -16,7 +16,7 @@ class LangchainGPT:
         
         # 设置初始API密钥
         if self.keys:
-            os.environ["OPENAI_API_KEY"] = self.keys[self.current_key_index]
+            os.environ["OPENAI_API_KEY"] = self.keys[model_name][self.current_key_index]
         
         # 创建模型和提示模板
         self.model = ChatOpenAI(model=self.model_name)
@@ -29,12 +29,12 @@ class LangchainGPT:
     
     def _load_keys(self, keys_path):
         """从文件加载API密钥"""
-        keys = []
+        keys = {}
         with open(keys_path, 'r') as f:
             for line in f:
-                key = line.strip()
+                model, key = line.strip().split()
                 if key:
-                    keys.append(key)
+                    keys[model] = key
         return keys
     
     def _rotate_key(self):
@@ -77,7 +77,10 @@ def langchain_datagen(args):
     
     def process_item(item):
         """处理单个数据项"""
-        item["model_answer"] = lgpt(item["query"])
+        ans = lgpt(item["query"])
+        print('ans',ans)
+        item["model_answer"] = ans
+        
         return item
     
     output_path = args.output_path

@@ -6,3 +6,5 @@ os.environ["TAVILY_API_KEY"] = "your_tavily_api_key"
 search = TavilySearchResults(max_results=2)
 
 print(search.invoke("今天深圳天气怎么样"))
+
+# https://langchain-ai.github.io/langgraph/reference/prebuilt/?h=create_react_agent
