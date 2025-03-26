@@ -4,8 +4,12 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from langchain_openai import ChatOpenAI
+from langchain_deepseek import ChatDeepSeek
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
 
 
 class LangchainGPT:
@@ -15,17 +19,29 @@ class LangchainGPT:
         self.current_key_index = 0
         
         # 设置初始API密钥
-        if self.keys:
-            os.environ["OPENAI_API_KEY"] = self.keys[model_name][self.current_key_index]
+        if self.keys:   
+            if isinstance(self.keys, dict):
+                print('key',self.keys[model_name][self.current_key_index])
+                os.environ["DEEPSEEK_API_KEY"] = self.keys[model_name][self.current_key_index]
+                os.environ["OPENAI_API_KEY"] = self.keys['gpt-4o'][self.current_key_index]
         
         # 创建模型和提示模板
-        self.model = ChatOpenAI(model=self.model_name)
+        if self.model_name.startswith("gpt-"):
+            self.model = ChatOpenAI(model=self.model_name,
+                        api_key=os.environ["OPENAI_API_KEY"],)
+        elif self.model_name.startswith("deepseek-"):
+            self.model = ChatDeepSeek(model=self.model_name, base_url=os.environ["OPENAI_BASE_URL"],
+                        api_key=os.environ["DEEPSEEK_API_KEY"],temperature=0)
+
         self.prompt = ChatPromptTemplate.from_messages([
             ("user", "{input}")
         ])
-        
+        # 加载向量库
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        vectorstore = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+        retriever = vectorstore.as_retriever()
         # 创建处理链
-        self.chain = self.prompt | self.model | StrOutputParser()
+        self.chain = {"context": retriever, "question": lambda x: x["input"]} | self.prompt | self.model | StrOutputParser()
     
     def _load_keys(self, keys_path):
         """从文件加载API密钥"""
@@ -34,7 +50,16 @@ class LangchainGPT:
             for line in f:
                 model, key = line.strip().split()
                 if key:
-                    keys[model] = key
+                    if model not in keys:
+                        keys[model] = []
+                    keys[model].append(key)
+        print('keys',keys)
+        # keys = []
+        # with open(keys_path, 'r') as f:
+        #     for line in f:
+        #         key = line.strip()
+        #         if key:
+        #             keys.append(key)
         return keys
     
     def _rotate_key(self):
@@ -119,7 +144,7 @@ def langchain_datagen(args):
                     writer.write(future.result())
                 except Exception as e:
                     print(
-                        f"处理项目时出错: {futures[future]['query']}. 错误: {e}"
+                        f"处理项目时出错: {futures[future]['id']}. 错误: {e}"
                     )
 
 

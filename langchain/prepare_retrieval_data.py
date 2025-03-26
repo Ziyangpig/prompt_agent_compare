@@ -79,29 +79,29 @@ def parallel_vectorize(chunks: List[Any], batch_size: int = 100, max_workers: in
 # %%
 if __name__ == "__main__":
     # 设置环境变量
-    os.environ["OPENAI_API_KEY"] = "your_openai_api_key"
+    os.environ["OPENAI_API_KEY"] = "sk-8bWHFZhLVSPyeXoO6f0327Ee96A34a1dB158Ad85174eE5A0"
     os.environ["OPENAI_BASE_URL"] = "https://apix.ai-gaochao.cn/v1"
 
-    # 加载数据
-    loader = TextLoader("data/ppl.json", encoding='utf-8')
-    documents = loader.load()
+    # # 加载数据
+    # loader = TextLoader("data/ppl.json", encoding='utf-8')
+    # documents = loader.load()
 
-    # 分割数据
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    chunks = text_splitter.split_documents(documents)
-    print(len(chunks))
+    # # 分割数据
+    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    # chunks = text_splitter.split_documents(documents)
+    # print(len(chunks))
 
-    # %%
-    # 创建向量库
-    # 并行处理文档
-    vectorstore = parallel_vectorize(
-        chunks=chunks,
-        batch_size=100,    # 每批100个文档块
-        max_workers=30,     # 使用4个线程
-        model_name="text-embedding-3-small"
-    )
-    # 保存向量库
-    vectorstore.save_local("faiss_index")
+    # # %%
+    # # 创建向量库
+    # # 并行处理文档
+    # vectorstore = parallel_vectorize(
+    #     chunks=chunks,
+    #     batch_size=100,    # 每批100个文档块
+    #     max_workers=30,     # 使用4个线程
+    #     model_name="text-embedding-3-small"
+    # )
+    # # 保存向量库
+    # vectorstore.save_local("faiss_index")
 
 
     # %%

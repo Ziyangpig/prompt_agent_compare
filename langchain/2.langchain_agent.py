@@ -1,5 +1,11 @@
-# %%
+import sys
 import os
+
+import jsonlines
+from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
+
+
 import re
 import json
 from langchain_core.output_parsers import StrOutputParser
@@ -14,14 +20,16 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.embeddings import DashScopeEmbeddings
 
-def get_ans(ans):
-    match = re.findall(r'.*?([A-E]+(?:[、, ]+[A-E]+)*)', ans)
-    if match:
-        last_match = match[-1]
-        return ''.join(re.split(r'[、, ，]+', last_match))
-    return ''
 
-# %%
+in_name="exam"
+prompt="fs"
+rag="true"
+model_name="deepseek-chat"
+
+input_path=f"./data/2.{in_name}_{prompt}_prepared.jsonl"
+output_path=f"./data/3.exam_aft_agent_{model_name}_{prompt}_rag_{rag}.jsonl"
+
+
 os.environ["TAVILY_API_KEY"] = "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"
 
 # os.environ["OPENAI_API_KEY"] = "sk-8bWHFZhLVSPyeXoO6f0327Ee96A34a1dB158Ad85174eE5A0"
@@ -32,7 +40,12 @@ os.environ["DEEPSEEK_API_KEY"] = "sk-f3084ab37eb34c789c726662029f5eab"
 os.environ["DEEPSEEK_BASE_URL"] = "https://api.deepseek.com/v1"
 model = ChatDeepSeek(model="deepseek-chat", temperature=0)
 
-
+def get_ans(ans):
+    match = re.findall(r'.*?([A-E]+(?:[、, ]+[A-E]+)*)', ans)
+    if match:
+        last_match = match[-1]
+        return ''.join(re.split(r'[、, ，]+', last_match))
+    return ''
 
 # %%
 # prepare the retrieval tool
@@ -68,39 +81,49 @@ agent = create_openai_functions_agent(model, tools, prompt)
 
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-# %%
-# execute the agent
-if __name__ == "__main__":
-    # agent_executor.invoke({"input": "胃寒应该怎么办"})
 
-    exam = json.load(open("data/exam.json", "r", encoding="utf-8"))
+def process_item(item):
+    # 使用agent处理item
+    result = agent_executor.invoke({"input": item['query']})
+    agent_answer = result.get('output', '')
+    processed_answer = get_ans(agent_answer)
+    item["model_answer"] = processed_answer
+    print(processed_answer)
+    return item
+  
+# 收集已处理项目的ID
+processed_ids = set()
+if os.path.exists(output_path):
+    with jsonlines.open(output_path, "r") as f:
+        for item in f:
+            processed_ids.add(item.get("id", None))
+
+items_to_process = []
+with jsonlines.open(input_path, "r") as reader:
+    for item in reader:
+        item_id = item.get("id", None)
+        if item_id is not None and item_id in processed_ids:
+            continue
+        items_to_process.append(item)
+
+
+ # 多线程并行处理
+with jsonlines.open(
+    output_path, "a" if os.path.exists(output_path) else "w") as writer:
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(process_item, item): item for item in items_to_process
+        }
+        
+        # 使用tqdm显示进度
+        for future in tqdm(
+            futures, total=len(items_to_process), desc="处理项目中"
+        ):
+            try:
+                writer.write(future.result())
+            except Exception as e:
+                print(
+                    f"处理项目时出错: {futures[future]['id']}. 错误: {e}"
+                )
+
     
-    # 检查数据是否有效
-    if not exam or 'question' not in exam[0] or 'option' not in exam[0]:
-        print("Error: Invalid exam data format")
-    else:
-        question = exam[0].get('question', '')
-        option = exam[0].get('option', '')
-        
-        # 确保问题和选项都是字符串
-        if not isinstance(question, str):
-            question = str(question) if question is not None else "问题内容缺失"
-        if not isinstance(option, str):
-            option = str(option) if option is not None else "选项内容缺失"
-            
-        # 构建有效的输入
-        input_text = f"请回答下面的多选题:\n{question}\n{option}"
-        
-        try:
-            result = agent_executor.invoke({"input": input_text})
-            agent_answer = result.get('output', '')
-            processed_answer = get_ans(agent_answer)
-            print(processed_answer)
-        except Exception as e:
-            print(f"Error occurred: {e}")
-            # 尝试不使用工具直接调用模型
-            from langchain_core.messages import HumanMessage
-            response = model.invoke([HumanMessage(content=input_text)])
-            print("直接模型回答:", response.content)
-            processed_answer = get_ans(response.content)
-            print("处理后答案:", processed_answer)
