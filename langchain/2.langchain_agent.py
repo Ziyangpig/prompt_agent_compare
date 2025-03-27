@@ -30,13 +30,13 @@ input_path=f"./data/2.{in_name}_{prompt}_prepared.jsonl"
 output_path=f"./data/3.exam_aft_agent_{in_name}_{model_name}_{prompt}_rag_{rag}.jsonl"
 
 
-os.environ["TAVILY_API_KEY"] = "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"
+os.environ["TAVILY_API_KEY"] = 
 
-# os.environ["OPENAI_API_KEY"] = "sk-8bWHFZhLVSPyeXoO6f0327Ee96A34a1dB158Ad85174eE5A0"
+# os.environ["OPENAI_API_KEY"] = ""
 # os.environ["OPENAI_BASE_URL"] = "https://apix.ai-gaochao.cn/v1"
 # model = ChatOpenAI(model="gpt-4o", temperature=0)
 
-os.environ["DEEPSEEK_API_KEY"] = "sk-f3084ab37eb34c789c726662029f5eab"
+os.environ["DEEPSEEK_API_KEY"] = 
 os.environ["DEEPSEEK_BASE_URL"] = "https://api.deepseek.com/v1"
 model = ChatDeepSeek(model="deepseek-chat", temperature=0)
 
@@ -51,7 +51,7 @@ def get_ans(ans):
 # prepare the retrieval tool
 
 # embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-os.environ["DASHSCOPE_API_KEY"] = 'sk-688d4d088f2742dc9051785bbe2dc6a5'
+os.environ["DASHSCOPE_API_KEY"] = 
 embeddings = DashScopeEmbeddings(
     model="text-embedding-v2",
     dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
