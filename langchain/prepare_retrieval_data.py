@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     # %%
     # 加载向量库
-    os.environ["DASHSCOPE_API_KEY"] = 'sk-688d4d088f2742dc9051785bbe2dc6a5'
+    os.environ["DASHSCOPE_API_KEY"] = 
     embeddings = DashScopeEmbeddings(
         model="text-embedding-v2",
         dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
