@@ -21,13 +21,13 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.embeddings import DashScopeEmbeddings
 
 
-in_name="exam"
+in_name="exam_demo"
 prompt="fs"
 rag="true"
 model_name="deepseek-chat"
 
 input_path=f"./data/2.{in_name}_{prompt}_prepared.jsonl"
-output_path=f"./data/3.exam_aft_agent_{model_name}_{prompt}_rag_{rag}.jsonl"
+output_path=f"./data/3.exam_aft_agent_{in_name}_{model_name}_{prompt}_rag_{rag}.jsonl"
 
 
 os.environ["TAVILY_API_KEY"] = "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"

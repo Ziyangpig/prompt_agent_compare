@@ -5,7 +5,7 @@ import argparse
 import os
 
 def match_choice(text):
-    match = re.findall(r'正确答案:([A-E]+)', text)
+    match = re.findall(r'正确答案[:：]([A-E]+)', text)
     if match:
         last_match = match[-1]
         # print('match',last_match,match)

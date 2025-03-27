@@ -11,5 +11,5 @@ score_file="./data/4.score_${in_model}_${prompt}_rag_${rag}.json"
 
 python 3.scorer.py --input_path "$input_file" --wrong_ans_path "$wrong_ans_path" --score_path "$score_file"
 
-# python 3.scorer.py --input_path ./data/3.exam_aftgpt.jsonl --wrong_ans_path ./data/4.wrong_ans.json --score_path ./data/4.score.json
+# python 3.scorer.py --input_path ./data/3.exam_aftgpt_mr.jsonl --wrong_ans_path ./data/4.wrong_ans_mr.json --score_path ./data/4.score_mr.json
 

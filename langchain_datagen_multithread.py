@@ -10,13 +10,15 @@ from langchain_core.output_parsers import StrOutputParser
 
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings import DashScopeEmbeddings
 
 
 class LangchainGPT:
-    def __init__(self, model_name="gpt-3.5-turbo", keys_path=None):
+    def __init__(self, model_name="gpt-3.5-turbo", keys_path=None, rag =False):
         self.model_name = model_name
         self.keys = self._load_keys(keys_path) if keys_path else []
         self.current_key_index = 0
+        self.rag = rag
         
         # 设置初始API密钥
         if self.keys:   
@@ -36,13 +38,22 @@ class LangchainGPT:
         self.prompt = ChatPromptTemplate.from_messages([
             ("user", "{input}")
         ])
-        # 加载向量库
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-        vectorstore = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-        retriever = vectorstore.as_retriever()
-        # 创建处理链
-        self.chain = {"context": retriever, "question": lambda x: x["input"]} | self.prompt | self.model | StrOutputParser()
-    
+        if self.rag:
+            # 加载向量库
+            # embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+            os.environ["DASHSCOPE_API_KEY"] = 'sk-688d4d088f2742dc9051785bbe2dc6a5'
+            embeddings = DashScopeEmbeddings(
+                model="text-embedding-v3",
+                dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
+            )
+                    
+            vectorstore = FAISS.load_local("../langchain/faiss_index", embeddings, allow_dangerous_deserialization=True)
+            retriever = vectorstore.as_retriever()
+            self.retriever = retriever
+            # 创建处理链
+            self.chain = {"context": self.retriever, "question": lambda x: x["input"]} | self.prompt | self.model | StrOutputParser()
+        else:
+            self.chain = self.prompt | self.model | StrOutputParser()
     def _load_keys(self, keys_path):
         """从文件加载API密钥"""
         keys = {}
@@ -68,23 +79,41 @@ class LangchainGPT:
             return
         
         self.current_key_index = (self.current_key_index + 1) % len(self.keys)
-        os.environ["OPENAI_API_KEY"] = self.keys[self.current_key_index]
+        
+        os.environ["DEEPSEEK_API_KEY"] = self.keys[self.current_key_index]
+        self.model = ChatDeepSeek(model=self.model_name, base_url=os.environ["OPENAI_BASE_URL"],
+                            api_key=os.environ["DEEPSEEK_API_KEY"],temperature=0)
         # 更新模型以使用新的API密钥
-        self.model = ChatOpenAI(model=self.model_name)
-        # 重新创建处理链
-        self.chain = self.prompt | self.model | StrOutputParser()
-    
+        if self.rag:
+            embeddings = DashScopeEmbeddings(
+                model="text-embedding-v3",
+                dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
+            )
+                    
+            vectorstore = FAISS.load_local("../langchain/faiss_index", embeddings, allow_dangerous_deserialization=True)
+            self.retriever = vectorstore.as_retriever()
+            
+            # 重新创建处理链
+            
+            self.chain = {"context": self.retriever, "question": lambda x: x["input"]} | self.prompt | self.model | StrOutputParser()
+        else:
+            self.chain = self.prompt | self.model | StrOutputParser()
     def __call__(self, message):
         """处理消息并返回响应"""
         if message is None or message == "":
             return "Your input is empty."
         
-        max_attempts = min(len(self.keys), 5) if self.keys else 1
+        max_attempts = min(len(self.keys['deepseek-chat']), 5) if self.keys else 1
         attempts = 0
         
         while attempts < max_attempts:
             try:
                 response = self.chain.invoke({"input": message})
+                if self.rag:
+                    
+
+                    ret = self.retriever.invoke(message)
+                    print("检索到的内容", ret)
                 return response
             except Exception as e:
                 print(f"Error with key {self.current_key_index}: {e}")
@@ -98,7 +127,7 @@ class LangchainGPT:
 def langchain_datagen(args):
     """使用LangChain处理数据生成"""
     # 初始化LangChain模型
-    lgpt = LangchainGPT(model_name=args.model_name, keys_path=args.keys_path)
+    lgpt = LangchainGPT(model_name=args.model_name, keys_path=args.keys_path, rag = args.rag)
     
     def process_item(item):
         """处理单个数据项"""
@@ -185,6 +214,12 @@ if __name__ == "__main__":
         type=str,
         default="https://api.openai.com/v1",
         help="API基础URL。",
+    )
+    parser.add_argument(
+        "--rag",
+        type=bool,
+        default=False,
+        help="是否使用RAG模型。",
     )
     
     args = parser.parse_args()

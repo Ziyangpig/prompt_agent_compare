@@ -8,6 +8,7 @@ from langchain.tools.retriever import create_retriever_tool
 import concurrent.futures
 from typing import List, Any
 import time
+from langchain_community.embeddings import DashScopeEmbeddings
 
 def process_chunk_batch(chunks_batch: List[Any], model_name: str = "text-embedding-3-small") -> FAISS:
     """处理一批文档块并返回对应的向量存储"""
@@ -106,15 +107,22 @@ if __name__ == "__main__":
 
     # %%
     # 加载向量库
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    os.environ["DASHSCOPE_API_KEY"] = 'sk-688d4d088f2742dc9051785bbe2dc6a5'
+    embeddings = DashScopeEmbeddings(
+        model="text-embedding-v2",
+        dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
+    )
     vectorstore = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    retriever = vectorstore.as_retriever()
+    # embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    # vectorstore = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
 
     # 创建检索工具
-    retriever = vectorstore.as_retriever()
+    # retriever = vectorstore.as_retriever()
 
-
+    # query_result = embeddings.embed_query("胃寒应该怎么办")
 
     # %%
     # 检索
-    print(retriever.invoke("胃寒应该怎么办")[0])
+    print(retriever.invoke("胃寒应该怎么办"))
 
